@@ -1,4 +1,4 @@
-# from pa1010d import PA1010D
+from pa1010d import PA1010D
 from djitellopy import Tello
 from geographiclib.geodesic import Geodesic
 from coord import Coord
@@ -66,6 +66,12 @@ class UAV:
 
     def initial_calibration(self, route_start):
         
+        try:
+            drone.takeoff()
+        except:
+            print('error taking off')
+            return False
+
         start_lat, start_long = self.get_current_position(5)
 
         drone.send_control_command('forward 150')
