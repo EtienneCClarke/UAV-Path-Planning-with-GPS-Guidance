@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+    <head>
+        <title>Drone GUI</title>
+        <link rel="stylesheet" href="../static/css/style.css" />
+    </head>
+
+    <body>
+        
+        <section id="status">
+            <div class="container flex-vertical align-center">
+                <div class="content">
+                    <h1>STATUS</h1>
+                    <div class="divider"></div>
+                    {% if status %}
+                    <div class="status-info">
+                        <div class="status-icon-container">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="6" cy="6" r="6" fill="#46C252"/>
+                            </svg>
+                        </div>
+                        <p class="success-text">Connected</p>
+                    </div>
+                    <div class="status-info">
+                        <div class="status-icon-container">
+                            <svg width="7" height="18" viewBox="0 0 7 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 6H7V14.5C7 16.433 5.433 18 3.5 18C1.567 18 0 16.433 0 14.5V6Z" fill="#383838"/>
+                                <rect x="0.25" y="0.25" width="6.5" height="17.5" rx="3.25" stroke="#383838" stroke-width="0.5"/>
+                            </svg>
+                        </div>
+                        <p class="status-text">
+                            {{battery}}%
+                        </p>
+                    </div>
+                    <div class="status-info">
+                        <div class="status-icon-container">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle r="6.75" transform="matrix(-1 0 0 1 8 8)" stroke="#383838" stroke-width="1.5"/>
+                                <circle r="0.631579" transform="matrix(-1 0 0 1 8.00001 8)" fill="#383838"/>
+                                <rect width="0.631579" height="4.42105" transform="matrix(-1 0 0 1 8.3158 3.10527)" fill="#383838"/>
+                                <rect width="0.631579" height="4.42105" transform="matrix(4.37114e-08 1 1 -4.37114e-08 3.10529 7.6842)" fill="#383838"/>
+                            </svg>
+                        </div>
+                        <p class="status-text"><span class="label-bold">{{flight_time}}</span> Minutes</p>
+                    </div>
+                    {% else %}
+                    <div class="status-info">
+                        <div class="status-icon-container">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="6" cy="6" r="6" fill="#C24646"/>
+                            </svg>
+                        </div>
+                        <p class="error-text">Disconnected</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="push-bottom">
+                    <button onclick="server.test()" class="action-btn take-flight-btn">START FLIGHT</button>
+                </div>
+            </div>
+        </section>
+        <section id="control-panel">
+            <div class="container flex-vertical align-center overflow-scroll">
+                <div class="content">
+                    <div class="cp-header">
+                        <h1>CONTROL PANEL</h1>
+                        <form action="/refresh_status" method="post" class="push-right">
+                            <input type="submit" value="Refresh Status" class="refresh-btn"/>
+                        </form>
+                    </div>
+                    <div id="destinations">
+                        <form id="add-destination" action="/add_destination" method="post">
+                            <input type="text" name="nickname" id="nickname" placeholder="Nickname" required/>
+                            <input type="text" name="latitude" id="latitude" placeholder="Latitude" required/>
+                            <input type="text" name="longitude" id="longitude" placeholder="Longitude" required/>
+                            <div>
+                                <div class="radio-container">
+                                    <span class="label">Destination</span>
+                                    <input class="push-right" type="radio" name="coordinate-type" value="destination" required/>
+                                </div>
+                                <div class="radio-container">
+                                    <span class="label">Obstacle</span>
+                                    <input class="push-right" type="radio" name="coordinate-type" value="obstacle" required/>
+                                </div>
+                            </div>
+                            <input type="hidden" name="from_history" value="no"/>
+                            <input type="submit" class="action-btn" value="ADD" />
+                        </form>
+                        <p class="label-light">* The first coordinate in 'Destinations' is considered the starting point</p>
+                        <div id="history-container">
+                            <h1>History</h1>
+                            <table id="history-table" cellspacing="0">
+                                <tr>
+                                    <td class="history-table-header">Type</td>
+                                    <td class="history-table-header">Name</td>
+                                    <td class="history-table-header">Latitude</td> 
+                                    <td class="history-table-header">Longitude</td> 
+                                    <td class="history-table-header"></td> 
+                                </tr>
+                                {% for hist in history %}
+                                <tr class="history-table-row" id="{{hist['id']}}">
+                                    <td>{{hist['type']}}</td>
+                                    <td>{{hist['name']}}</td>
+                                    <td>{{hist['latitude']}}</td>
+                                    <td>{{hist['longitude']}}</td>
+                                    <td>
+                                        <button onclick="add_history_item({{hist['id']}})" class="history-table-btn btn-green">Use</button>
+                                        <button onclick="remove_history_item({{hist['id']}})" class="history-table-btn btn-red">Remove</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                        <div id="toggle-container">
+                            <div class="push-right space-right">
+                                <span class="toggle-text">HISTORY</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="coordinates">
+                        <div class="list-container">
+                            <h1>Destinations</h1>
+                            <div id="list-of-destinations">
+                                {% for dest in destinations %}
+                                <form class="coordinate-container" action="/remove_destination" method="post">
+                                    <div class="coordinate-content">
+                                        <p class="destination-title">{{dest[1]}}</p>
+                                        <p class="coordinate-text push-right">{{dest[2]}},{{dest[3]}}</p>
+                                    </div>
+                                    <input type="hidden" name="id" value="{{dest[0]}}">
+                                    <input type="submit" class="action-btn btn-red" value="Delete"/>
+                                </form>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="list-container">
+                            <h1>Obstacles</h1>
+                            <div id="list-of-obstacles">
+                                {% for obst in obstacles %}
+                                <form class="coordinate-container" action="/remove_obstacle" method="post">
+                                    <div class="coordinate-content">
+                                        <p class="obstacle-title">{{obst[1]}}</p>
+                                        <p class="coordinate-text push-right">{{obst[2]}},{{obst[3]}}</p>
+                                    </div>
+                                    <input type="hidden" name="id" value="{{obst[0]}}">
+                                    <input type="submit" class="action-btn btn-red" value="Delete"/>
+                                </form>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <br/><br/><br/>
+                    <div>
+                        <button class="action-btn" onclick="server.calculatePath()">Calculate Route</button>
+                    </div>
+                    <div id="show-path-container">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+</html>
+<script src="../static/js/jQuery.js"></script>
+<script src="../static/js/script.js"></script>
