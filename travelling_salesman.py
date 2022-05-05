@@ -21,7 +21,6 @@ def generateGraph(destinations):
                 coordinate_A = (i.getLongitude(), i.getLatitude())
                 coordinate_B = (j.getLongitude(), j.getLatitude())
 
-                print(Geodesic.WGS84.Inverse(i.getLatitude(), i.getLongitude(), j.getLatitude(), j.getLongitude()))
                 # Calculate distance
                 neighbours[j.getName()] = str(Geodesic.WGS84.Inverse(i.getLatitude(), i.getLongitude(), j.getLatitude(), j.getLongitude())['s12'])
 
