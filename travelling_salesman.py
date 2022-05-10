@@ -17,12 +17,8 @@ def generateGraph(destinations):
         for j in destinations:
             if i != j:
 
-                # Create coordinate tuples
-                coordinate_A = (i.getLongitude(), i.getLatitude())
-                coordinate_B = (j.getLongitude(), j.getLatitude())
-
                 # Calculate distance
-                neighbours[j.getName()] = str(Geodesic.WGS84.Inverse(i.getLatitude(), i.getLongitude(), j.getLatitude(), j.getLongitude())['s12'])
+                neighbours[str(j.getName())] = str(Geodesic.WGS84.Inverse(i.getLatitude(), i.getLongitude(), j.getLatitude(), j.getLongitude())['s12'])
 
         graph[i.getName()] = neighbours
 
@@ -36,17 +32,17 @@ def nearestNeighbour(g):
     graph = list(g.items())
     n = len(graph)
     current_node = graph[0]
-    path.append(current_node[0])
+    path.append(str(current_node[0]))
 
     for i in range(0, n):
 
         neighbours = graph[graph.index(current_node)][1]
 
-        nearest_neighbour = ''
+        nearest_neighbour = ""
         nearest_neighbour_cost = float('inf')
         for node in neighbours:
 
-            neighbour = node[0]
+            neighbour = str(node[0])
             cost = float(neighbours[node])
 
             if neighbour not in path:
@@ -55,7 +51,7 @@ def nearestNeighbour(g):
                     nearest_neighbour = neighbour
 
         for node in graph:
-            if node[0] == nearest_neighbour:
+            if str(node[0]) == nearest_neighbour:
                 current_node = node
         
         if nearest_neighbour_cost < float('inf'):

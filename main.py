@@ -21,21 +21,20 @@ class App:
         self.battery = None
         self.flight_time = None
         self.route = []
+        self.drone_position = None
 
-        # asyncio.run(self.check_connection())
-        # asyncio.run(self.get_battery())
-        # asyncio.run(self.get_flight_time())
+        asyncio.run(self.check_connection())
+        self.get_battery()
+        self.get_drone_pos(uav.gps_accuracy)
 
     async def check_connection(self):
         self.is_connected = await uav.connectToDrone()
-    
-    async def get_battery(self):
-        self.battery = await uav.getBattery()
-    
-    async def get_flight_time(self):
-        self.flight_time = await uav.getFlightTime()
-        if self.flight_time != None:
-            self.flight_time /= 60
+
+    def get_battery(self):
+        self.battery = uav.getBattery()
+
+    def get_drone_pos(self, n):
+        self.drone_position = uav.get_current_position(n)
 
     def calculatePath(self):
         d = []
@@ -56,7 +55,20 @@ class App:
         
         self.js.document.getElementById('show-path-container').innerHTML = '<h2>Proposed Route: ' + str(rNames) + ', with a sum distance of ' + str(round(cost, 2)) + ' meters</h2><p class="label-light">* Order is from left to right</p><img src="/static/images/tsp.jpg"/>'
 
-    def test(self):
+    def get_past_log(self):
+        log = None
+        with open('static/js/flight_log.json', 'r') as file:
+            log = json.load(file)
+        
+        p = log['flight_log']
+
+        print(p)
+
+        self.js.document.getElementById('show-drone-path-container').innerHTML = ''
+
+        
+
+    def start(self):
         uav.start_flight(self.route)
 
 @app.route('/load_json', methods=['GET'])
@@ -73,15 +85,15 @@ def add_destination():
     nickname = request.form['nickname']
     latitude = request.form['latitude']
     longitude = request.form['longitude']
-    type = request.form['coordinate-type']
+    type = 'destination'
     from_history = request.form['from_history']
 
     if type == 'destination':
         uid = len(destinations)
         destinations.append([uid, nickname, latitude, longitude])
-    elif type == 'obstacle':
-        uid = len(obstacles)
-        obstacles.append([uid, nickname, latitude, longitude])
+    # elif type == 'obstacle':
+    #     uid = len(obstacles)
+    #     obstacles.append([uid, nickname, latitude, longitude])
     
     if from_history == 'no':
         history = load_json()
@@ -106,7 +118,7 @@ def remove_history_destination():
         if history['locations'][i]['id'] == id:
             history['locations'].pop(i)
             break
-    
+       
     save_json(history)
 
     return 'ok'
@@ -134,15 +146,15 @@ def remove_obstacle():
 @app.route('/refresh_status', methods=['POST'])
 def refresh_status():
     asyncio.run(App.check_connection())
-    asyncio.run(App.get_battery())
-    asyncio.run(App.get_flight_time())
+    App.get_battery()
+    App.get_drone_pos(uav.gps_accuracy)
 
     return redirect(url_for('index'))
 
 @app.route('/')
 def index():
     history = load_json()
-    return App.render(render_template('index.html', status=App.is_connected, battery=App.battery, flight_time=App.flight_time, destinations=destinations, obstacles=obstacles, history=history['locations']))
+    return App.render(render_template('index.html', status=App.is_connected, battery=App.battery, flight_time=App.flight_time, destinations=destinations, obstacles=obstacles, current_pos=App.drone_position, history=history['locations']))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='192.168.50.1', port=5000)

@@ -1,0 +1,60 @@
+jQuery(function() {
+    $.getJSON('/load_json', function(data) {
+        data['locations'].forEach(element => {
+            $('#history-table').append('\
+            <tr class="history-table-row" id="' + element['id'] + '">\
+                <td>' + element['type'] + '</td>\
+                <td>' + element['name'] + '</td>\
+                <td>' + element['longitude'] + '</td>\
+                <td>' + element['latitude'] + '</td>\
+                <td>\
+                    <button onclick="add_history_item(' + element['id'] + ')" class="history-table-btn btn-green">Use</button>\
+                    <button onclick="remove_history_item(' + element['id'] + ')" class="history-table-btn btn-red">Remove</button>\
+                </td>\
+            ');
+        });
+    });
+    if(localStorage.getItem('hidden_status') == 'visible') {
+        $('#history-container').slideDown(0);
+    } else if (localStorage.getItem('hidden_status') == null) {
+        localStorage.setItem('hidden_status', 'hidden');
+    }
+});
+
+function add_history_item(table_row_id) {
+
+    let values = []
+    let row = document.getElementById(table_row_id);
+    $(row).children("td").each(function() {
+        values.push($(this).text());
+    });
+
+    $.post('/add_destination', {
+        'coordinate-type':values[0],
+        'nickname':values[1],
+     'longitude':values[2],
+        'latitude':values[3],
+        'from_history':'yes'
+    });
+
+    location.reload();
+}
+
+function remove_history_item(table_row_id) {
+    $('#' + table_row_id).hide(400, function(){ $('#' + table_row_id).remove(); });
+
+    $.post('/remove_history_destination', {
+        'id':table_row_id
+    });
+}
+
+$('#toggle-container').on('click', function() {
+    hidden_status = localStorage.getItem('hidden_status');
+    if(hidden_status == 'hidden') {
+        $('#history-container').slideDown(400);
+        localStorage.setItem('hidden_status', 'visible');
+    } else if (hidden_status == 'visible') {
+        $('#history-container').slideUp(400);
+        localStorage.setItem('hidden_status', 'hidden');
+    }
+});

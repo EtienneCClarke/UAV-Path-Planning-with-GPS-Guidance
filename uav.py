@@ -1,7 +1,7 @@
 from pa1010d import PA1010D
 from djitellopy import Tello
 from geographiclib.geodesic import Geodesic
-from coord import Coord
+import json
 import time
 
 drone = Tello('192.168.50.138')
@@ -12,8 +12,13 @@ class UAV:
     def __init__(self):
         self.flying = False
         self.current_heading = 0 # 0 = North, 90 = East, 180 = South, 270 = West
-        self.flight_log = []
         self.gps_accuracy = 15
+        self.flight_log = {
+            "distance" : 0,
+            "start_battery" : 0,
+            "end_battery" : 0,
+            "flight_log": []
+        }
 
     async def connectToDrone(self):
         """
@@ -27,7 +32,7 @@ class UAV:
         except:
             return False
 
-    async def getBattery(self):
+    def getBattery(self):
         """
         Retrieves current battery level
 
@@ -48,7 +53,7 @@ class UAV:
             return drone.get_flight_time()
         except:
             return None
-    
+
     def emergencyStop(self):
         """
         In emergency stop drone and attempt to land- If unable to do so stop rotors
@@ -58,34 +63,64 @@ class UAV:
             drone.land()
         except:
             drone.emergency()
+    
+    def save_log(self, data):
+        with open('static/js/flight_log.json', 'w') as file:
+            json.dump(data, file)
+    
+    def update_log(self, lat, long, distance):
+
+        jsonObj = {
+            "lat" : lat,
+            "long" : long
+        }
+        self.flight_log['flight_log'].append(jsonObj)
+        self.flight_log['distance'] = self.flight_log['distance'] + distance
+        self.flight_log['end_battery'] = self.getBattery()
+        self.save_log(self.flight_log)
+
 
     # Begins flight
     def start_flight(self, route):
 
-        self.initial_calibration((route[0].getLatitude(),route[0].getLongitude()))
+        # self.flight_log['start_battery'] = self.getBattery()
 
-        # # Attempt to takeoff
-        # try:
-        #     drone.takeoff()
-        # except:
-        #     print('error')
+        try:
+            self.initial_calibration()
+        except:
+            print('could not calibrate')
+
+        time.sleep(3)
+        # Attempt to takeoff
+        try:
+           drone.takeoff()
+        except:
+           print('error')
         
-        # # Fly to each location
-        # for i in route:
-        #     print(i.getName(), i.getLatitude(), i.getLongitude())
-        #     # self.fly_to(i.getLatitude(), i.getLongitude())
+        #Fly to each location
+        visited = []
+        for i in route:
+            print(visited)
+            if i.getName() not in visited:
+               try:
+                   self.fly_to(i.getLatitude(), i.getLongitude())
+                   visited.append(i.getName())
+               except:
+                   print('Could not navigate to destination')
 
-        # # Attempt to land
-        # try:
-        #     drone.land()
-        # except:
-        #     print('error')
+        # Attempt to land
+        try:
+            drone.land()
+        except:
+            print('error')
 
-    def initial_calibration(self, route_start):
+    def initial_calibration(self):
         """
-        Calibrates where the drone is facing
-        """
+        Calibrates where the drone is facing. Takes average gps recording of two positions
+        then calculates the heading.
 
+        :return Bool: Returns True when calibration is complete
+        """
         start_lat, start_long = self.get_current_position(self.gps_accuracy)
 
         try:
@@ -94,22 +129,20 @@ class UAV:
             print('error taking off')
 
         drone.send_control_command('forward 500')
-        
+        drone.send_control_command('forward 500')
+
         try:
             drone.land()
         except:
             print('Error landing')
-        
+
         end_lat, end_long = self.get_current_position(self.gps_accuracy)
 
         self.current_heading = self.get_edge_data(start_lat, start_long, end_lat, end_long)['azi1']
+        if self.current_heading < 0:
+            self.current_heading = round(360 + self.current_heading)
 
-        try:
-            drone.takeoff()
-        except:
-            print('error taking off')
-        
-        self.fly_to(route_start[0], route_start[1])
+        return True
 
     def fly_to(self, lat, long):
         """
@@ -119,37 +152,45 @@ class UAV:
         :param long: Longitude value of destination
         :return Bool: Returns True if it has reached its destination
         """
-
         # Loop until reached detination
         while True:
 
-            # Hover in position
-            drone.send_control_command('stop')
-            
-            # Get current GPS coordinates
+            # # Get current GPS coordinates
             current_lat, current_long = self.get_current_position(self.gps_accuracy)
 
-            # Check if drones
-            if current_lat < lat + 0.00005 and current_lat > lat - 0.00005:
-                if current_long < long + 0.00005 and current_long > long - 0.00005:
-                    drone.send_control_command('stop')
+            # Check if drone is at desired coordinates
+            if current_lat < lat + 0.00002 and current_lat > lat - 0.00002:
+                if current_long < long + 0.00002 and current_long > long - 0.00002:
                     return True
 
             # Get Edge Data
             edge_data = self.get_edge_data(current_lat, current_long, lat, long)
-            
+
             # Calculate angle, direction to turn, and distance to destination
             a, cw = self.calc_rotation(edge_data)
-            distance = round(edge_data['s12'] * 100) # convert to cm
+            distance = round(edge_data['s12'] * 100) # convert to  cm
 
-            # rotate to face destination
-            if a > self.current_heading + 2 or a < self.current_heading - 2:
+            # self.update_log(current_lat, current_long, distance)
+
+            # rotate to face destination if greater than 
+            if a > 2 and a != 0:
                 if cw:
-                    drone.send_control_command('cw ' + str(a))
-                    self.current_heading += a
+                    # drone.send_control_command('cw ' + str(a))
+                    sum_a = self.current_heading + a
+                    if sum_a == 360:
+                        self.current_heading = 0
+                    elif sum_a < 360:
+                        self.current_heading = sum_a
+                    else:
+                        self.current_heading = sum_a - 360
+
                 else:
-                    drone.send_control_command('ccw ' + str(a))
-                    self.current_heading -= a
+                    # drone.send_control_command('ccw ' + str(a))
+                    sum_a = self.current_heading - a
+                    if sum_a >= 0:
+                        self.current_heading = sum_a
+                    else:
+                        self.current_heading = sum_a + 360
 
             # Move to destination if less than or equal to 5 meters, else move forward 5 meters 
             if distance <= 500:
@@ -185,10 +226,12 @@ class UAV:
         count = 0
         while count < n:
             result = gps.update()
-            if result:
+            if result and gps.latitude is not None:
                 latitude += gps.latitude
                 longitude += gps.longitude
                 count += 1
+            else:
+                return (0, 0)
 
         return(latitude / n, longitude / n)
 
@@ -202,28 +245,43 @@ class UAV:
         :return (Int, Bool): Angle to turn and Boolean confirms if turning clockwise is quicker than counter clockwise- returned as tuple
         """
         # bearing in degrees to next point from north, 0 to 180 = eastwards, 0 to -180 = westwards
-        bearing = round(data['azi1']) # Must be Int to work with tello SDK
-        
+        bearing = round(data['azi1'])
+
         # Convert to bearing in degrees from north between 0 and 360
         if bearing < 0:
             bearing = 360 + bearing
 
         # Returns angle and direction to turn, clockwise = True | counter clockwise = False, 
         if self.current_heading != bearing:
-            if self.current_heading < 180:
-                if bearing < self.current_heading + 180 and bearing > self.current_heading:
-                    return (bearing - self.current_heading, True)
+
+            if self.current_heading <= 180:
+
+                if bearing > self.current_heading and bearing < self.current_heading + 180:
+                    a = bearing - self.current_heading
+                    return (a, True)
+
                 else:
                     if bearing > 0 and bearing < self.current_heading:
-                        return (self.current_heading - bearing, False)
+                        a = self.current_heading - bearing
+                        return (a, False)
+
                     else:
-                        return (360 - bearing + self.current_heading, False)
+                        a = (360 - bearing) + self.current_heading
+                        return (a, False)
+
             else:
                 if bearing < self.current_heading and bearing > self.current_heading - 180:
-                    return (self.current_heading - bearing, False)
+                    a = self.current_heading - bearing
+                    return (a, False)
+
                 else:
-                    if bearing > self.current_heading:
-                        return(bearing - self.current_heading, True)
+                    if bearing > 0 and bearing < self.current_heading - 180:
+                        a = (360 - self.current_heading) + bearing
+                        return(a, True)
+
+                    else:
+                        a = bearing - self.current_heading
+                        return(a, True)
 
         # Return 0 if facing correct direction
         return (0, True)
