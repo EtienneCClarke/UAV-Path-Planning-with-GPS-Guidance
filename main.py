@@ -59,10 +59,8 @@ class App:
         log = None
         with open('static/js/flight_log.json', 'r') as file:
             log = json.load(file)
-        
-        p = log['flight_log']
 
-        plotTruePath(self.route, p)
+        plotTruePath(self.route, log['flight_log'])
 
         self.js.document.getElementById('show-drone-path-container').innerHTML = ''\
                     '<h2>Route of UAV from previous flight</h2><br/>'\
@@ -74,13 +72,13 @@ class App:
                                 '<div class="status-info coordinate-status">'\
                                     '<p class="status-text label-bold">'\
                                         'Start Battery:'\
-                                       '<span class="gps-text"></span>'\
+                                       '<span class="gps-text">' + log['start_battery'] + '</span>'\
                                     '</p>'\
                                 '</div>'\
                                 '<div class="status-info coordinate-status">'\
                                     '<p class="status-text label-bold">'\
                                         'End Battery:'\
-                                        '<span class="gps-text"></span>'\
+                                        '<span class="gps-text">' + log['end_battery'] + '</span>'\
                                     '</p>'\
                                 '</div>'\
                             '</div>'\
