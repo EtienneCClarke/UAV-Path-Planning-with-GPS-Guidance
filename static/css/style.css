@@ -248,6 +248,20 @@ input {
     margin-bottom: 50px;
 }
 
+#show-drone-path-container {
+    margin-bottom: 100px;
+}
+
+.flight-log {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.flight-log div {
+    width: 45%;
+}
+
 .cp-header {
     display: flex;
     flex-direction: row;

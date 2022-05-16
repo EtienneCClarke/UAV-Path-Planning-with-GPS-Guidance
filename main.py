@@ -4,7 +4,7 @@ import asyncio
 import json
 from coord import Coord
 from travelling_salesman import calculateShortestPath
-from graph import plotPath
+from graph import plotPath, plotTruePath
 from uav import UAV
 
 destinations = []
@@ -62,9 +62,29 @@ class App:
         
         p = log['flight_log']
 
-        print(p)
+        plotTruePath(self.route, p)
 
-        self.js.document.getElementById('show-drone-path-container').innerHTML = ''
+        self.js.document.getElementById('show-drone-path-container').innerHTML = ''\
+                    '<h2>Route of UAV from previous flight</h2><br/>'\
+                        '<div class="flight-log">'\
+                            '<div class="drone-path-graph">'\
+                                '<img src="/static/images/truepath.jpg" width="100%"/>'\
+                            '</div>'\
+                            '<div class="drone-path-info">'\
+                                '<div class="status-info coordinate-status">'\
+                                    '<p class="status-text label-bold">'\
+                                        'Start Battery:'\
+                                       '<span class="gps-text"></span>'\
+                                    '</p>'\
+                                '</div>'\
+                                '<div class="status-info coordinate-status">'\
+                                    '<p class="status-text label-bold">'\
+                                        'End Battery:'\
+                                        '<span class="gps-text"></span>'\
+                                    '</p>'\
+                                '</div>'\
+                            '</div>'\
+                        '</div>'\
 
         
 

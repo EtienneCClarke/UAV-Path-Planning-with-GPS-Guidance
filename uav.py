@@ -14,7 +14,6 @@ class UAV:
         self.current_heading = 0 # 0 = North, 90 = East, 180 = South, 270 = West
         self.gps_accuracy = 15
         self.flight_log = {
-            "distance" : 0,
             "start_battery" : 0,
             "end_battery" : 0,
             "flight_log": []
@@ -67,15 +66,9 @@ class UAV:
     def save_log(self, data):
         with open('static/js/flight_log.json', 'w') as file:
             json.dump(data, file)
-    
-    def update_log(self, lat, long, distance):
 
-        jsonObj = {
-            "lat" : lat,
-            "long" : long
-        }
-        self.flight_log['flight_log'].append(jsonObj)
-        self.flight_log['distance'] = self.flight_log['distance'] + distance
+    def update_log(self, lat, long):
+        self.flight_log['flight_log'].append([lat, long])
         self.flight_log['end_battery'] = self.getBattery()
         self.save_log(self.flight_log)
 
@@ -83,7 +76,7 @@ class UAV:
     # Begins flight
     def start_flight(self, route):
 
-        # self.flight_log['start_battery'] = self.getBattery()
+        self.flight_log['start_battery'] = self.getBattery()
 
         try:
             self.initial_calibration()
@@ -100,13 +93,13 @@ class UAV:
         #Fly to each location
         visited = []
         for i in route:
-            print(visited)
             if i.getName() not in visited:
                try:
                    self.fly_to(i.getLatitude(), i.getLongitude())
                    visited.append(i.getName())
                except:
                    print('Could not navigate to destination')
+                   drone.land()
 
         # Attempt to land
         try:
@@ -152,16 +145,22 @@ class UAV:
         :param long: Longitude value of destination
         :return Bool: Returns True if it has reached its destination
         """
-        # Loop until reached detination
         while True:
 
-            # # Get current GPS coordinates
+            # Is there enough battery
+            if self.getBattery() <= 30:
+                return False
+
+            # Get current GPS coordinates
             current_lat, current_long = self.get_current_position(self.gps_accuracy)
+            # current_lat, current_long = (53.48507523811314, -2.2496590652130206)
 
             # Check if drone is at desired coordinates
             if current_lat < lat + 0.00002 and current_lat > lat - 0.00002:
                 if current_long < long + 0.00002 and current_long > long - 0.00002:
                     return True
+
+            # lat, long = (53.48542391616002, -2.2506294124744874)
 
             # Get Edge Data
             edge_data = self.get_edge_data(current_lat, current_long, lat, long)
@@ -170,10 +169,10 @@ class UAV:
             a, cw = self.calc_rotation(edge_data)
             distance = round(edge_data['s12'] * 100) # convert to  cm
 
-            # self.update_log(current_lat, current_long, distance)
+            self.update_log(current_lat, current_long)
 
             # rotate to face destination if greater than 
-            if a > 2 and a != 0:
+            if a != 0:
                 if cw:
                     # drone.send_control_command('cw ' + str(a))
                     sum_a = self.current_heading + a
@@ -253,32 +252,25 @@ class UAV:
 
         # Returns angle and direction to turn, clockwise = True | counter clockwise = False, 
         if self.current_heading != bearing:
-
             if self.current_heading <= 180:
-
                 if bearing > self.current_heading and bearing < self.current_heading + 180:
                     a = bearing - self.current_heading
                     return (a, True)
-
                 else:
                     if bearing > 0 and bearing < self.current_heading:
                         a = self.current_heading - bearing
                         return (a, False)
-
                     else:
                         a = (360 - bearing) + self.current_heading
                         return (a, False)
-
             else:
                 if bearing < self.current_heading and bearing > self.current_heading - 180:
                     a = self.current_heading - bearing
                     return (a, False)
-
                 else:
                     if bearing > 0 and bearing < self.current_heading - 180:
                         a = (360 - self.current_heading) + bearing
                         return(a, True)
-
                     else:
                         a = bearing - self.current_heading
                         return(a, True)
