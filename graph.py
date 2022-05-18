@@ -1,7 +1,11 @@
 from matplotlib import pyplot as plt
-import random
 
 def plotPath(path):
+    """
+    Plots proposed path for visual feedback to the user
+    
+    :return Bool: Returns True or False depending if it was successful generating a figure.
+    """
 
     try:
         x_values = []
@@ -23,6 +27,11 @@ def plotPath(path):
         return False
 
 def plotTruePath(path, dronePath):
+    """
+    Plots proposed path overlayed with the drones flight path from previous flight.
+    
+    :return Bool: Returns True or False depending if it was successful generating a figure.
+    """
 
     try:
         drone_x_values = []

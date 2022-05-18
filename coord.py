@@ -1,4 +1,11 @@
 class Coord:
+    """
+    Coordinate object to store data about a GPS position
+
+    :method getName: Returns name of coordinate object.\n
+    :method getLatitude: Returns latitude of coordinate.\n
+    :method getLongitude: Returns longitude of coordinate.\n
+    """
 
     def __init__(self, _name, _lat, _long):
         self.name = _name

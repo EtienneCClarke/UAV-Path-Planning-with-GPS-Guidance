@@ -147,20 +147,17 @@ class UAV:
         """
         while True:
 
-            # Is there enough battery
+            # Is there enough battery?
             if self.getBattery() <= 30:
                 return False
 
             # Get current GPS coordinates
             current_lat, current_long = self.get_current_position(self.gps_accuracy)
-            # current_lat, current_long = (53.48507523811314, -2.2496590652130206)
 
-            # Check if drone is at desired coordinates
+            # First Check if drone is at desired coordinates
             if current_lat < lat + 0.00002 and current_lat > lat - 0.00002:
                 if current_long < long + 0.00002 and current_long > long - 0.00002:
                     return True
-
-            # lat, long = (53.48542391616002, -2.2506294124744874)
 
             # Get Edge Data
             edge_data = self.get_edge_data(current_lat, current_long, lat, long)
@@ -171,10 +168,14 @@ class UAV:
 
             self.update_log(current_lat, current_long)
 
+            # Second check if drone is at desired coordinates this time relative distance to destination
+            if distance < 150:
+                return True
+
             # rotate to face destination if greater than 
             if a != 0:
                 if cw:
-                    # drone.send_control_command('cw ' + str(a))
+                    drone.send_control_command('cw ' + str(round(a)))
                     sum_a = self.current_heading + a
                     if sum_a == 360:
                         self.current_heading = 0
@@ -184,7 +185,7 @@ class UAV:
                         self.current_heading = sum_a - 360
 
                 else:
-                    # drone.send_control_command('ccw ' + str(a))
+                    drone.send_control_command('ccw ' + str(round(a)))
                     sum_a = self.current_heading - a
                     if sum_a >= 0:
                         self.current_heading = sum_a
